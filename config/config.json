@@ -1,0 +1,18 @@
+{
+    "server": {
+        "port": ":9180"
+    },
+    "projects": [
+        {
+            "Name":         "SGA-development",
+            "AbsolutePath": "/Users/anatolieghebea/Dev/www/other/go_apps/simple-git-agent",
+            "SharedSecret": "asjhhdalhh8uyr84hiahesd894qawa",
+            "SyncBranch":   "current", 
+            "BranchName":   "main"
+        }
+    ]
+
+    
+
+    
+}

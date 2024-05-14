@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
+	"time"
 
 	"github.com/anatolieGhebea/simple-git-agent/models"
 )
@@ -51,9 +53,22 @@ func TriggerHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	// check and create log file for the day
+	currentDate := time.Now().Format("2006-01-02")
+	logFileName := fmt.Sprintf("logs/output_%s.log", currentDate)
+
+	logFile, err := os.OpenFile(logFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Printf("error opening file: %v", err)
+		return
+	}
+	defer logFile.Close()
+
 	cmd := exec.Command("sh", "-c", fmt.Sprintf("cd %s && git pull origin ", triggerEntry.AbsolutePath))
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+
 	if err := cmd.Run(); err != nil {
-		fmt.Println(err)
 		http.Error(w, "Error while updating the project", http.StatusInternalServerError)
 		return
 	}

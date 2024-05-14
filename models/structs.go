@@ -11,11 +11,11 @@ type Response struct {
 	Message string `json:"message"`
 }
 
-type ServerConfig struct {
-	Port string
+type Server struct {
+	Port string `json:"port"`
 }
 
-type ProjectEntry struct {
+type TriggerEntry struct {
 	Name         string
 	AbsolutePath string
 	SharedSecret string
@@ -23,7 +23,14 @@ type ProjectEntry struct {
 	BranchName   string      //
 }
 
-type TriggerObject struct {
-	ProjectName  string `json:"project_name"`
+type Config struct {
+	Server   Server         `json:"server"`
+	Triggers []TriggerEntry `json:"triggers"`
+}
+
+type TriggerRequest struct {
+	Name         string `json:"name"`
 	SharedSecret string `json:"shared_secret"`
 }
+
+var Configuration Config = Config{}

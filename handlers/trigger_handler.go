@@ -9,45 +9,56 @@ import (
 	"github.com/anatolieGhebea/simple-git-agent/models"
 )
 
-func UpdateHandler(w http.ResponseWriter, req *http.Request) {
+func TriggerHandler(w http.ResponseWriter, req *http.Request) {
 	if req.Method != "POST" {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	projectEntry := models.ProjectEntry{
-		Name:         "SGA-development",
-		AbsolutePath: "/Users/anatolieghebea/Dev/www/other/go_apps/simple-git-agent",
-		SharedSecret: "asjhhdalhh8uyr84hiahesd894qawa",
-		SyncBranch:   models.CurrentBranch,
-		BranchName:   "main",
-	}
-
-	// fmt.Fprintf(w, "true")
-	if projectEntry.SyncBranch != models.SpecificBranch && projectEntry.BranchName != "main" {
-		http.Error(w, "The trigger for the current project is missconfigured! Try later or contact the server administrator.", http.StatusInternalServerError)
-		return
-	}
-
-	var triggerObject models.TriggerObject
-	err := json.NewDecoder(req.Body).Decode(&triggerObject)
+	// check request validity
+	triggerRequest := models.TriggerRequest{}
+	err := json.NewDecoder(req.Body).Decode(&triggerRequest)
 	if err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	if triggerObject.SharedSecret != projectEntry.SharedSecret || triggerObject.ProjectName != projectEntry.Name {
-		http.Error(w, "ProjectName and SharedKey don't match", http.StatusUnauthorized)
+	// check if TriggerEntry exists in Config by Name
+	triggerEntry := models.TriggerEntry{}
+	found := false
+	for _, item := range models.Configuration.Triggers {
+		if item.Name == triggerRequest.Name {
+			triggerEntry = item
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		http.Error(w, "Trigger not found, check the name field and try again.", http.StatusNotFound)
 		return
 	}
 
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("cd %s && git pull origin ", projectEntry.AbsolutePath))
+	if triggerRequest.SharedSecret != triggerEntry.SharedSecret || triggerRequest.Name != triggerEntry.Name {
+		http.Error(w, "TriggerName and SharedKey don't match", http.StatusUnauthorized)
+		return
+	}
+
+	// fmt.Fprintf(w, "true")
+	current_simulate_branch := "main" // capire come prendere da git
+	if triggerEntry.SyncBranch == models.SpecificBranch && triggerEntry.BranchName != current_simulate_branch {
+		http.Error(w, "The trigger for the current project is missconfigured! Try later or contact the server administrator.", http.StatusInternalServerError)
+		return
+	}
+
+	cmd := exec.Command("sh", "-c", fmt.Sprintf("cd %s && git pull origin ", triggerEntry.AbsolutePath))
 	if err := cmd.Run(); err != nil {
+		fmt.Println(err)
 		http.Error(w, "Error while updating the project", http.StatusInternalServerError)
 		return
 	}
 
-	response := models.Response{Message: fmt.Sprintf("Trigger is set to update %s branch, for project %s with key %s", string(projectEntry.SyncBranch), triggerObject.ProjectName, triggerObject.SharedSecret)}
+	response := models.Response{Message: fmt.Sprintf("Trigger is set to update %s branch, for project %s with key %s", string(triggerEntry.SyncBranch), triggerEntry.Name, triggerEntry.SharedSecret)}
 
 	json.NewEncoder(w).Encode(response)
 

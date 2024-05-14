@@ -2,12 +2,19 @@
     "server": {
         "port": ":9180"
     },
-    "projects": [
+    "triggers": [
         {
             "Name":         "SGA-development",
             "AbsolutePath": "/Users/anatolieghebea/Dev/www/other/go_apps/simple-git-agent",
-            "SharedSecret": "asjhhdalhh8uyr84hiahesd894qawa",
+            "SharedSecret": "asjhhdalhh8uyr84hiahesd894qawa12",
             "SyncBranch":   "current", 
+            "BranchName":   "main"
+        },
+        {
+            "Name":         "GA-DNS-PROXY",
+            "AbsolutePath": "/Users/anatolieghebea/Dev/www/servers_config/ga-dns-proxy",
+            "SharedSecret": "asjhhdalhh8uyr84hiahesd894qawa14",
+            "SyncBranch":   "specific", 
             "BranchName":   "main"
         }
     ]    

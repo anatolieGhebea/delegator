@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/anatolieGhebea/simple-git-agent/models"
@@ -36,23 +37,6 @@ func TriggerHandler(w http.ResponseWriter, req *http.Request) {
 		}
 	}
 
-	if !found {
-		http.Error(w, "Trigger not found, check the name field and try again.", http.StatusNotFound)
-		return
-	}
-
-	if triggerRequest.SharedSecret != triggerEntry.SharedSecret || triggerRequest.Name != triggerEntry.Name {
-		http.Error(w, "TriggerName and SharedKey don't match", http.StatusUnauthorized)
-		return
-	}
-
-	// fmt.Fprintf(w, "true")
-	current_simulate_branch := "main" // capire come prendere da git
-	if triggerEntry.SyncBranch == models.SpecificBranch && triggerEntry.BranchName != current_simulate_branch {
-		http.Error(w, "The trigger for the current project is missconfigured! Try later or contact the server administrator.", http.StatusInternalServerError)
-		return
-	}
-
 	// check and create log file for the day
 	currentDate := time.Now().Format("2006-01-02")
 	logFileName := fmt.Sprintf("logs/output_%s.log", currentDate)
@@ -64,16 +48,51 @@ func TriggerHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	defer logFile.Close()
 
-	cmd := exec.Command("sh", "-c", fmt.Sprintf("cd %s && git pull origin ", triggerEntry.AbsolutePath))
+	fmt.Fprintf(logFile, "Trigger action for %s.\n", triggerRequest.Name)
+	if !found {
+		// print error to log file
+		fmt.Fprintf(logFile, "Trigger config not found for %s.\n", triggerRequest.Name)
+		http.Error(w, "Trigger not found, check the name field and try again.", http.StatusNotFound)
+		return
+	}
+
+	if triggerRequest.SharedSecret != triggerEntry.SharedSecret || triggerRequest.Name != triggerEntry.Name {
+		fmt.Fprintf(logFile, "TriggerName and SharedKey don't match %s > %s.\n", triggerRequest.Name, triggerRequest.SharedSecret)
+		http.Error(w, "TriggerName and SharedKey don't match", http.StatusUnauthorized)
+		return
+	}
+
+	// Get current git branch
+	getBranchNameCmd := exec.Command("git", "-C", triggerEntry.AbsolutePath, "rev-parse", "--abbrev-ref", "HEAD")
+	branchName, err := getBranchNameCmd.Output()
+	if err != nil {
+		fmt.Printf("error getting current git branch: %v", err)
+		return
+	}
+
+	currentBranch := strings.TrimSpace(string(branchName))
+	fmt.Fprintf(logFile, "Current branch: %s\n", currentBranch)
+	// current_simulate_branch := "main" // capire come prendere da git
+
+	// check if the trigger is set to a specific branch and if the current branch is the same
+	if triggerEntry.SyncBranch == models.SpecificBranch && triggerEntry.BranchName != currentBranch {
+		http.Error(w, "The trigger for the current project is missconfigured! Try later or contact the server administrator.", http.StatusInternalServerError)
+		return
+	}
+
+	// execute git pull command in the project folder to update the project
+	cmd := exec.Command("git", "-C", triggerEntry.AbsolutePath, "pull", "origin", currentBranch)
+	//	write the output to the log file
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
 
 	if err := cmd.Run(); err != nil {
-		http.Error(w, "Error while updating the project", http.StatusInternalServerError)
+		fmt.Printf("error executing git pull: %v", err)
+		http.Error(w, "An error occured while executing the command. Check log file on the server for more detailes.", http.StatusInternalServerError)
 		return
 	}
 
-	response := models.Response{Message: fmt.Sprintf("Trigger is set to update %s branch, for project %s with key %s", string(triggerEntry.SyncBranch), triggerEntry.Name, triggerEntry.SharedSecret)}
+	response := models.Response{Message: "Operation completed"}
 
 	json.NewEncoder(w).Encode(response)
 

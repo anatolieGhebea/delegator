@@ -13,16 +13,8 @@ import (
 	"github.com/anatolieGhebea/simple-git-agent/models"
 )
 
-// test only
-// var Config models.Config = models.Config{
-// 	Server:   models.Server{Port: ":9919"}, // set default port to 9919
-// 	Triggers: []models.TriggerEntry{},
-// }
-
-// test only
-
 func loadConfig() {
-	// test only
+
 	// Load configuration from file
 	fmt.Println("Loading configuration...")
 
@@ -48,13 +40,7 @@ func loadConfig() {
 	for _, item := range models.Configuration.Triggers {
 		fmt.Printf("Name: %s, \tPath: %s\n", item.Name, item.AbsolutePath)
 	}
-
-	// Config.Server = models.Server{Port: ":9180"} // customize port
 }
-
-// WEB ENDPOINTS (handlers implementation)
-
-// END > WEB ENDPOINTS
 
 // ENTRY POINT
 func main() {

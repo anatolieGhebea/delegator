@@ -1,6 +1,7 @@
 {
     "server": {
-        "port": ":9180"
+        "port": ":9180",
+        "LogRetentionDays": 2
     },
     "triggers": [
         {

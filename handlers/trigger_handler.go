@@ -76,6 +76,7 @@ func TriggerHandler(w http.ResponseWriter, req *http.Request) {
 
 	// check if the trigger is set to a specific branch and if the current branch is the same
 	if triggerEntry.SyncBranch == models.SpecificBranch && triggerEntry.BranchName != currentBranch {
+		fmt.Fprintf(logFile, "The trigger is configured to run for branch %s.\n", triggerEntry.BranchName)
 		http.Error(w, "The trigger for the current project is missconfigured! Try later or contact the server administrator.", http.StatusInternalServerError)
 		return
 	}
@@ -93,6 +94,13 @@ func TriggerHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	response := models.Response{Message: "Operation completed"}
+
+	// clean old log files
+	olderThan := fmt.Sprintf("+%d", models.Configuration.Server.LogRetentionDays)
+	cleanLogFilesCmd := exec.Command("find", "logs/", "-type", "f", "-name", "output_*.log", "-mtime", olderThan, "-exec", "rm", "{}", ";")
+	if err := cleanLogFilesCmd.Run(); err != nil {
+		fmt.Fprintf(logFile, "error cleaning log files: %v", err)
+	}
 
 	json.NewEncoder(w).Encode(response)
 

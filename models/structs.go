@@ -12,7 +12,8 @@ type Response struct {
 }
 
 type Server struct {
-	Port string `json:"port"`
+	Port             string `json:"port"`
+	LogRetentionDays int    `json:"log_retention_days"`
 }
 
 type TriggerEntry struct {

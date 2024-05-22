@@ -5,14 +5,18 @@
     },
     "triggers": [
         {
+            "EventSource": "github",
             "Name":         "App1",
+            "RepositoryName": "gitaccount/app1",
             "AbsolutePath": "/var/www/other/ap1",
             "SharedSecret": "asjhhdal",
             "SyncBranch":   "current", 
             "BranchName":   "main"
         },
         {
+            "EventSource": "bitbucket",
             "Name":         "GA-DNS-PROXY",
+            "RepositoryName": "gitaccount/app1",
             "AbsolutePath": "/var/www/app2/devops",
             "SharedSecret": "asjhhdal",
             "SyncBranch":   "specific", 

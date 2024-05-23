@@ -1,3 +1,3 @@
-module github.com/anatolieGhebea/simple-git-agent
+module github.com/anatolieGhebea/delegator
 
 go 1.21.3

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anatolieGhebea/simple-git-agent/models"
+	"github.com/anatolieGhebea/delegator/models"
 )
 
 func TriggerHandler(w http.ResponseWriter, req *http.Request) {
@@ -40,6 +40,9 @@ func TriggerHandler(w http.ResponseWriter, req *http.Request) {
 	eventSource := detectEventSource(req.Header)
 	if eventSource == models.GitHubHook {
 		handleGitHubEvent(w, req, logFile)
+		return
+	} else if eventSource == models.BitBucketHook {
+		handleBitbucketEvent(w, req, logFile)
 		return
 	} else {
 		handleGenericEvent(w, req, logFile)
@@ -130,7 +133,7 @@ func handleGitHubEvent(w http.ResponseWriter, req *http.Request, logFile *os.Fil
 		return
 	} else if event != "push" {
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(models.Response{Message: "accepted"})
+		json.NewEncoder(w).Encode(models.Response{Message: fmt.Sprintf("The received event %s is unsupported by the agent.", event)})
 		return
 	}
 
@@ -167,6 +170,7 @@ func handleGitHubEvent(w http.ResponseWriter, req *http.Request, logFile *os.Fil
 		return
 	}
 
+	// from the "ref": "refs/heads/master" get the branch name
 	update_branch := ""
 	if strings.Contains(triggerRequest.Ref, "heads") {
 		parts := strings.Split(triggerRequest.Ref, "/")
@@ -197,7 +201,77 @@ func handleGitHubEvent(w http.ResponseWriter, req *http.Request, logFile *os.Fil
 	}
 
 	json.NewEncoder(w).Encode(models.Response{Message: "Operation completed"})
+}
 
+func handleBitbucketEvent(w http.ResponseWriter, req *http.Request, logFile *os.File) {
+
+	event := req.Header.Get(models.HeaderBitBucket)
+
+	if event != "repo:push" {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(models.Response{Message: fmt.Sprintf("The received event %s is unsupported by the agent.", event)})
+		return
+	}
+
+	// check request validity
+	triggerRequest := models.BitBucketEventSource{}
+	err := json.NewDecoder(req.Body).Decode(&triggerRequest)
+	if err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	// check if TriggerEntry exists in Config by Name
+	eventHook := models.EventHook{}
+	found := false
+	for _, item := range models.Configuration.Triggers {
+		if item.RepositoryName == triggerRequest.Repository["full_name"] {
+			eventHook = item
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		notFoundRepository(w, logFile, triggerRequest.Repository["full_name"].(string))
+		return
+	}
+
+	// check security
+
+	//
+	currentBranch, err := getCurrentBranch(eventHook, logFile)
+	if err != nil {
+		http.Error(w, "An error occured while getting the current branch", http.StatusInternalServerError)
+		return
+	}
+
+	// from the "ref": "refs/heads/master" get the branch name
+	update_branch := triggerRequest.Push.Changes[0].Change.Name
+	if update_branch != currentBranch {
+		// the event did not update the selected branch, no point in pulling the changes
+		branchMismatch(w, logFile, update_branch, currentBranch)
+		return
+	}
+
+	if eventHook.SyncBranch == models.SpecificBranch && eventHook.BranchName != currentBranch {
+		// the pull request must be run only if the current branch is the one configured in the trigger
+		branchMismatch(w, logFile, eventHook.BranchName, currentBranch)
+		return
+	}
+
+	// execute git pull command in the project folder to update the project
+	cmd := exec.Command("git", "-C", eventHook.AbsolutePath, "pull", "origin", currentBranch)
+	//	write the output to the log file
+	cmd.Stdout = logFile
+	cmd.Stderr = logFile
+
+	if err := cmd.Run(); err != nil {
+		updateFailed(w, logFile, err)
+		return
+	}
+
+	json.NewEncoder(w).Encode(models.Response{Message: "Operation completed"})
 }
 
 func notFoundRepository(w http.ResponseWriter, logFile *os.File, repositoryName string) {

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/anatolieGhebea/simple-git-agent/models"
+	"github.com/anatolieGhebea/delegator/models"
 )
 
 func InfoHandler(w http.ResponseWriter, req *http.Request) {

@@ -8,9 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/anatolieGhebea/simple-git-agent/handlers"
-	"github.com/anatolieGhebea/simple-git-agent/middleware"
-	"github.com/anatolieGhebea/simple-git-agent/models"
+	"github.com/anatolieGhebea/delegator/handlers"
+	"github.com/anatolieGhebea/delegator/middleware"
+	"github.com/anatolieGhebea/delegator/models"
 )
 
 func loadConfig() {
@@ -48,9 +48,9 @@ func main() {
 	loadConfig()
 
 	// define web endpoints
-	http.HandleFunc("/info", middleware.JsonResponseHandler(handlers.InfoHandler))
-	http.HandleFunc("/trigger_update", middleware.JsonResponseHandler(handlers.TriggerHandler))
-	http.HandleFunc("/", middleware.JsonResponseHandler(handlers.NotFoundHandler))
+	http.HandleFunc("/info", middleware.LoggingMiddleware(middleware.JsonResponseHandler(handlers.InfoHandler)))
+	http.HandleFunc("/trigger_update", middleware.LoggingMiddleware(middleware.JsonResponseHandler(handlers.TriggerHandler)))
+	http.HandleFunc("/", middleware.LoggingMiddleware(middleware.JsonResponseHandler(handlers.NotFoundHandler)))
 
 	go func() {
 		fmt.Printf("Start server on port %s\n", models.Configuration.Server.Port)

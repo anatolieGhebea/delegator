@@ -10,7 +10,7 @@ const (
 	BitBucketHook   EventSource = "bitbucket"
 	GenericHook     EventSource = "generic"
 	HeaderGitHub    string      = "X-Github-Event"
-	HeaderBitBucket string      = "X-Bitbucket-Event"
+	HeaderBitBucket string      = "X-Event-Key"
 )
 
 type Response struct {
@@ -43,13 +43,27 @@ type GenericEventSource struct {
 }
 
 type GitHubEventSource struct {
-	Event      string                 `json:"event"`
-	Repository map[string]interface{} `json:"repository"`
+	// Event      string                 `json:"event"`
 	Ref        string                 `json:"ref"`
-}
-type BitBucketEventSource struct {
-	Event      string                 `json:"event"`
 	Repository map[string]interface{} `json:"repository"`
+}
+
+// manage bitbucket event
+type BitBucketEventSource struct {
+	Push       Push                   `json:"push"`
+	Repository map[string]interface{} `json:"repository"`
+}
+
+type Push struct {
+	Changes []Change `json:"changes"`
+}
+
+type Change struct {
+	Change NewBranch `json:"new"`
+}
+
+type NewBranch struct {
+	Name string `json:"name"`
 }
 
 var Configuration Config = Config{}
